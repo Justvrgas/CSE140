@@ -94,7 +94,6 @@ void Simulate () {
 	 * Note that we reuse the d struct for each instruction.
 	 */
         Decode (instr, &d, &rVals);
-
         /*Print decoded instruction*/
         PrintInstruction(&d);
 
@@ -168,8 +167,9 @@ void PrintInfo ( int changedReg, int changedMem) {
             }
         }
     }
+    
 }
-
+    
 /*
  *  Return the contents of memory at the given address. Simulates
  *  instruction fetch. 
@@ -181,6 +181,7 @@ unsigned int Fetch ( int addr) {
 /* Decode instr, returning decoded instruction. */
 void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
     /* Your code goes here */
+    
 }
 
 /*
