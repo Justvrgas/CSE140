@@ -35,7 +35,7 @@ void InitComputer (FILE* filein, int printingRegisters, int printingMemory,
     for (k=0; k<32; k++) {
         mips.registers[k] = 0;
     }
-    
+
     /* stack pointer - Initialize to highest address of data segment */
     mips.registers[29] = 0x00400000 + (MAXNUMINSTRS+MAXNUMDATA)*4;
 
@@ -180,8 +180,146 @@ unsigned int Fetch ( int addr) {
 
 /* Decode instr, returning decoded instruction. */
 void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
-    /* Your code goes here */
     
+    /*
+        R-Format instruction Decode
+     */
+    if(instr >> 26 == 0){
+        //OPCODE
+        d->op = instr >> 26;
+        printf("OPCODE: %d\n", d->op);
+        //setting the type of instruction
+        d->type = R;
+        //RS
+        d->regs.r.rs = instr << 6;
+        d->regs.r.rs = d->regs.r.rs >> 27;
+        printf("RS: %d\n", d->regs.r.rs);
+        //RT
+        d->regs.r.rt = instr << 11;
+        d->regs.r.rt = d->regs.r.rt >> 27;
+        printf("RT: %d\n", d->regs.r.rt);
+        //RD
+        d->regs.r.rd = instr << 16;
+        d->regs.r.rd = d->regs.r.rd >> 27;
+        printf("RD: %d\n", d->regs.r.rd);
+        //SHAMT
+        d->regs.r.shamt = instr << 21;
+        d->regs.r.shamt = d->regs.r.shamt >> 27;
+        printf("SHAMT: %d\n", d->regs.r.shamt);
+        //FUNCT
+        unsigned int temp = instr << 26;
+        d->regs.r.funct = temp >> 26;
+        printf("FUNCT: %d\n", d->regs.r.funct);
+        //setting register values
+        rVals->R_rs = mips.registers[d->regs.r.rs];
+        rVals->R_rt = mips.registers[d->regs.r.rt];
+        rVals->R_rd = mips.registers[d->regs.r.rd];
+        // abort();
+    }
+    /*
+        J-Format instruction Deocode
+     */
+    else if(instr >> 26 == 2 || instr >> 26 == 3){
+        d->type = J;
+        d->op = instr >> 26;
+        printf("OP: %d\n", d->op);
+        d->regs.j.target = instr << 6;
+        d->regs.j.target = d->regs.j.target >> 4;
+        printf("TARGET: %d\n", d->regs.j.target);
+        // abort();
+    }
+    /*
+        I-Format instruction Decode
+     */
+    else{
+        d->type = I;
+
+        d->op = instr >> 26;
+        printf("OP: %d\n", d->op);
+        d->regs.i.rs = instr << 6;
+        d->regs.i.rs = d->regs.i.rs >> 27;
+        printf("RS: %d\n", d->regs.i.rs);
+        d->regs.i.rt = instr << 11;
+        d->regs.i.rt = d->regs.i.rt >> 27;
+        printf("RT: %d\n", d->regs.i.rt);
+
+        /*
+            addiu instruction
+            test dump file : I_instruction_1.dump
+            addiu $t1, $t2, -150
+         */
+        if (d->op == 9){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
+        }
+        /*
+            andi instruction
+            test dump file : I_instruction_2.dump
+            andi $t1, $t2, 100
+         */
+        else if (d->op == 12){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
+        }
+        /*
+            ori instruction
+            test dump file : I_instruction_3.dump
+            ori $t1, $t2, 100
+         */
+        else if (d->op == 13){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
+        }
+        /*
+            lui instruction
+            test dump file : I_instruction_4.dump
+            lui $t1, 100
+         */
+        else if (d->op == 15){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
+        }
+        /*
+            beq instruction
+            test dump file : I_instruction_5.dump
+            beq $t1, $t2, label
+            label:
+         */
+        else if (d->op == 4){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
+        }
+        /*
+            lw instruction
+            test dump file : I_instruction_7.dump
+            lw $t1, ($t2)
+         */
+        else if (d->op == 35){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
+        }
+        /*
+            sw instruction
+            test dump file : I_instruction_8.dump
+            sw $t1, ($t2)
+         */
+        else if(d->op == 43){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);            
+        }
+
+        rVals->R_rs = mips.registers[d->regs.i.rs];
+        rVals->R_rt = mips.registers[d->regs.i.rt];
+        // abort();
+    }
+
 }
 
 /*
@@ -189,7 +327,70 @@ void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
  *  followed by a newline.
  */
 void PrintInstruction ( DecodedInstr* d) {
-    /* Your code goes here */
+    /*
+        seperate the prints based off of their type
+     */
+    if(d->type == 0){
+        if(d->regs.r.funct == 33){
+            printf("addu $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
+        }
+        else if(d->regs.r.funct == 36){
+            printf("and $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
+        }
+        else if(d->regs.r.funct == 8){
+            printf("jr $%d\n", d->regs.r.rs);
+        }
+        else if(d->regs.r.funct == 37){
+            printf("or $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
+        }
+        else if(d->regs.r.funct == 42){
+            printf("slt $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
+        }
+        else if(d->regs.r.funct == 0){
+            printf("sll $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.shamt);
+        }
+        else if(d->regs.r.funct == 2){
+            printf("srl $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.shamt);
+        }
+        else if(d->regs.r.funct == 35){
+            printf("subu $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
+        }
+        
+    }
+
+    else if(d->type == I){
+        if(d->op == 9){
+            printf("addiu $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
+        }
+        else if(d->op == 12){
+            printf("andi $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
+        }
+        else if(d->op == 13){
+            printf("ori $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
+        }
+        else if(d->op == 15){
+            printf("lui $%d, %d\n", d->regs.i.rt, d->regs.i.addr_or_immed);
+        }
+        else if(d->op == 4){
+            printf("beq $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
+        }
+        else if(d->op == 35){
+            
+        }
+        else if(d->op == 43){
+            
+        }
+    }
+
+    else{
+        if(d->op == 2){
+            printf("j 0x%08x\n", d->regs.j.target);
+        }
+        else if(d->op == 3){
+            printf("jal 0x%08x\n", d->regs.j.target);
+        }
+    }
+    // abort();
 }
 
 /* Perform computation needed to execute d, returning computed value */

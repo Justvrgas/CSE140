@@ -1,0 +1,2 @@
+bne $t1, $t2, label
+label:
