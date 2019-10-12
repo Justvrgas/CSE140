@@ -179,6 +179,7 @@ unsigned int Fetch ( int addr) {
 }
 
 /* Decode instr, returning decoded instruction. */
+//DONE
 void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
     
     /*
@@ -226,6 +227,7 @@ void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
         d->regs.j.target = instr << 6;
         d->regs.j.target = d->regs.j.target >> 4;
         printf("TARGET: %d\n", d->regs.j.target);
+      
         // abort();
     }
     /*
@@ -295,6 +297,17 @@ void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
            printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
         }
         /*
+            bne instruction
+            test dump file : I_instruction_5.dump
+            bne $t1, $t2, label
+            label:
+         */
+        else if (d->op == 5){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
+        }
+        /*
             lw instruction
             test dump file : I_instruction_7.dump
             lw $t1, ($t2)
@@ -326,10 +339,14 @@ void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
  *  Print the disassembled version of the given instruction
  *  followed by a newline.
  */
+
+//DONE
 void PrintInstruction ( DecodedInstr* d) {
     /*
         seperate the prints based off of their type
      */
+    
+    //R format prints
     if(d->type == 0){
         if(d->regs.r.funct == 33){
             printf("addu $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
@@ -355,9 +372,12 @@ void PrintInstruction ( DecodedInstr* d) {
         else if(d->regs.r.funct == 35){
             printf("subu $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
         }
+
+        // abort();
         
     }
-
+    
+    //I format prints
     else if(d->type == I){
         if(d->op == 9){
             printf("addiu $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
@@ -374,14 +394,19 @@ void PrintInstruction ( DecodedInstr* d) {
         else if(d->op == 4){
             printf("beq $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
         }
+        else if(d->op == 5){
+            printf("bne $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
+        }
         else if(d->op == 35){
-            
+            printf("lw $%d, %d($%d)\n", d->regs.i.rs, d->regs.i.addr_or_immed, d->regs.i.rt);
         }
         else if(d->op == 43){
-            
+            printf("sw $%d, %d($%d)\n", d->regs.i.rs, d->regs.i.addr_or_immed, d->regs.i.rt);
         }
+        // abort();
     }
 
+    //j format prints
     else{
         if(d->op == 2){
             printf("j 0x%08x\n", d->regs.j.target);
@@ -395,7 +420,134 @@ void PrintInstruction ( DecodedInstr* d) {
 
 /* Perform computation needed to execute d, returning computed value */
 int Execute ( DecodedInstr* d, RegVals* rVals) {
-    /* Your code goes here */
+     int val = 0;
+
+     if(d->type == 0){
+        //addu
+        if(d->regs.r.funct == 33){
+            //rd = rs + rt
+            rVals->R_rd = rVals->R_rs + rVals->R_rt;
+            val = rVals->R_rd;
+        }
+        // and
+        else if(d->regs.r.funct == 36){
+            //rd = rs & rt
+            rVals->R_rd = rVals->R_rs & rVals->R_rt;
+            val = rVals->R_rd;
+        }
+        // jr
+        else if(d->regs.r.funct == 8){
+            /**
+             * FINISH
+             */
+        }
+        // or
+        else if(d->regs.r.funct == 37){
+            //rd = rs | rt
+            rVals->R_rd = rVals->R_rs | rVals->R_rt;
+            val = rVals->R_rd;
+        }
+        // slt
+        else if(d->regs.r.funct == 42){
+            //rd = 1 if rs < rt else rd = 0
+            if(rVals->R_rs < rVals->R_rt){
+                rVals->R_rd = 1;
+                val = rVals->R_rd;
+            }
+            else{
+                rVals->R_rd = 0;
+                val = rVals->R_rd;
+            }
+        }
+        // sll
+        else if(d->regs.r.funct == 0){
+            //rd = rt << shamt
+            rVals->R_rd = rVals->R_rt << d->regs.r.shamt;
+            val = rVals->R_rd;
+        }
+        // srl
+        else if(d->regs.r.funct == 2){
+            //rd = rt >> shamt
+            rVals->R_rd = rVals->R_rt >> d->regs.r.shamt;
+            val = rVals->R_rd;
+        }
+        // subu
+        else if(d->regs.r.funct == 35){
+            //rd = rs - rt
+            rVals->R_rd = rVals->R_rs - rVals->R_rt;
+            val = rVals->R_rd;
+        }
+
+        return val;
+        // abort();
+        
+    }
+
+    //i-format
+    else if(d->type == I){
+        //addiu
+        if(d->op == 9){
+            //rt = rs + imm
+            rVals->R_rt = rVals->R_rs + d->regs.i.addr_or_immed;
+        }
+        //andi
+        else if(d->op == 12){
+            //
+            rVals->R_rt = rVals->R_rs & d->regs.i.addr_or_immed;
+        }
+        //ori
+        else if(d->op == 13){
+            rVals->R_rt = rVals->R_rs | d->regs.i.addr_or_immed;
+        }
+        //lui
+        else if(d->op == 15){
+            rVals->R_rt = d->regs.i.addr_or_immed << 16;
+        }
+        //beq
+        else if(d->op == 4){
+            /**
+             * FINISH
+             */
+        }
+        //bne
+        else if(d->op == 5){
+            /**
+             * FINISH
+             */
+        }
+        //lw
+        else if(d->op == 35){
+            /**
+             * FINISH
+             */
+        }
+        //sw
+        else if(d->op == 43){
+            /**
+             * FINISH
+             */
+        }
+        // abort();
+    }
+
+    //j-format
+    else{
+        //j
+        if(d->op == 2){
+            /**
+             * FINISH
+             */
+        }
+        //jal
+        else if(d->op == 3){
+            /**
+             * FINISH
+             */
+        }
+    }
+
+
+
   return 0;
 }
 
@@ -405,8 +557,24 @@ int Execute ( DecodedInstr* d, RegVals* rVals) {
  * increments by 4 (which we have provided).
  */
 void UpdatePC ( DecodedInstr* d, int val) {
+    
+    if(d->type == R){
+        printf("R FORMAT MEM\n");
+        if(d->op != 8)
+        {
+            mips.pc += 4;
+        }
+    }
+
+    else if(d->type == J){
+        printf("J FORMAT MEM\n");
+    }
+
+    else{
+        printf("I FORMAT MEM\n");
+    }
+
     mips.pc+=4;
-    /* Your code goes here */
 }
 
 /*
@@ -421,7 +589,20 @@ void UpdatePC ( DecodedInstr* d, int val) {
  */
 int Mem( DecodedInstr* d, int val, int *changedMem) {
     /* Your code goes here */
-  return 0;
+
+    if(d->type == I){
+        printf("R FORMAT MEM\n");
+    }
+
+    else if(d->type == J){
+        printf("J FORMAT MEM\n");
+    }
+
+    else{
+        printf("I FORMAT MEM\n");
+    }
+
+    return 0;
 }
 
 /* 
