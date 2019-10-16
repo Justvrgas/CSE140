@@ -1,2 +1,2 @@
-j check
-check:
+jr $t1
+

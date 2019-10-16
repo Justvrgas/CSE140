@@ -1,6 +1,3 @@
-// Edited By Justin Vargas 10/14/2019
-// CSE 140 Project 1
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <netinet/in.h>
@@ -181,7 +178,27 @@ unsigned int Fetch ( int addr) {
     return mips.memory[(addr-0x00400000)/4];
 }
 
-
+void sign(DecodedInstr* d){
+    //j or jal
+    if(d->op == 0x2 || d->op == 0X3){
+        if(1 == d->regs.j.target >> 26){
+            d->regs.j.target = (0xF2000000) | (d->regs.j.target);
+        }
+        else {
+            d->regs.j.target = (0x00FFFFFF & (d->regs.j.target));
+        }
+    
+    }
+    //other i format
+    else{
+        if(1 == d->regs.i.addr_or_immed >> 15){
+            d->regs.i.addr_or_immed = (0xffff0000) | (d->regs.i.addr_or_immed);
+        }
+        else{
+            d->regs.i.addr_or_immed = (0x0000FFFF & (d->regs.i.addr_or_immed));
+        }
+    }
+}
 
 //DONE
 /* Decode instr, returning decoded instruction. */
@@ -193,92 +210,176 @@ void Decode ( unsigned int instr, DecodedInstr* d, RegVals* rVals) {
     if(instr >> 26 == 0){
         //OPCODE
         d->op = instr >> 26;
-        // printf("OPCODE: %d\n", d->op);
+        printf("OPCODE: %d\n", d->op);
         //setting the type of instruction
         d->type = R;
         //RS
         d->regs.r.rs = (instr << 6) >> 27;
         //dubug
-        // printf("RS: %d\n", d->regs.r.rs); 
+        printf("RS: %d\n", d->regs.r.rs); 
         //RT
         d->regs.r.rt = (instr << 11) >> 27;
         //debug
-        // printf("RT: %d\n", d->regs.r.rt);
+        printf("RT: %d\n", d->regs.r.rt);
         //RD
         d->regs.r.rd = (instr << 16) >> 27;
         //debug
-        // printf("RD: %d\n", d->regs.r.rd);
+        printf("RD: %d\n", d->regs.r.rd);
         //SHAMT
         d->regs.r.shamt = (instr << 21) >> 27;
         //debug
-        // printf("SHAMT: %d\n", d->regs.r.shamt);
+        printf("SHAMT: %d\n", d->regs.r.shamt);
         //FUNCT
         unsigned int temp = instr << 26;
         d->regs.r.funct = temp >> 26;
-        // printf("FUNCT: %d\n", d->regs.r.funct);
+        printf("FUNCT: %d\n", d->regs.r.funct);
         //setting register values
         rVals->R_rs = mips.registers[d->regs.r.rs];
         rVals->R_rt = mips.registers[d->regs.r.rt];
-        rVals->R_rd = mips.registers[d->regs.r.rd];
+        rVals->R_rd = 0;
         // abort();
     }
-
-
     /*
         J-Format instruction Deocode
      */
     else if(instr >> 26 == 2 || instr >> 26 == 3){
         d->type = J;
         d->op = instr >> 26;
-        // printf("OP: %d\n", d->op);
-        d->regs.j.target = ((instr << 6) >> 4) | ((mips.pc >> 28) << 28);
-        // printf("TARGET: %d\n", d->regs.j.target);
+        printf("OP: %d\n", d->op);
+        d->regs.j.target = instr << 6;
+        d->regs.j.target = d->regs.j.target >> 4;
+        if(1 == d->regs.j.target >> 26){
+            d->regs.j.target = (0xF2000000) | (d->regs.j.target);
+        }
+        else {
+            d->regs.j.target = (0x00FFFFFF & (d->regs.j.target));
+        }
+        printf("TARGET: %d\n", d->regs.j.target);
+      
         // abort();
     }
-
-
     /*
         I-Format instruction Decode
      */
     else{
-
         d->type = I;
+
         d->op = instr >> 26;
-        // printf("OP: %d\n", d->op);
-        d->regs.i.rs = (instr << 6) >> 27;
-        // printf("RS: %d\n", d->regs.i.rs);
-        d->regs.i.rt = (instr << 11) >> 27;
-        // printf("RT: %d\n", d->regs.i.rt);
-        d->regs.i.addr_or_immed = (instr << 16) >> 16;
-        /**
-         * sign extend
+        printf("OP: %d\n", d->op);
+        d->regs.i.rs = instr << 6;
+        d->regs.i.rs = d->regs.i.rs >> 27;
+        printf("RS: %d\n", d->regs.i.rs);
+        d->regs.i.rt = instr << 11;
+        d->regs.i.rt = d->regs.i.rt >> 27;
+        printf("RT: %d\n", d->regs.i.rt);
+
+        /*
+            addiu instruction
+            test dump file : I_instruction_1.dump
+            addiu $t1, $t2, -150
          */
-        //addiu
-        if(d->op == 9){
-           if (1 == d->regs.i.addr_or_immed >> 15){
-                d->regs.i.addr_or_immed = d->regs.i.addr_or_immed | 0xffff0000;
-           } 
+        if (d->op == 9){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
         }
-        //lw
-        else if(d-> op == 35){
-            if (1 == d->regs.i.addr_or_immed >> 15){
-                d->regs.i.addr_or_immed = d->regs.i.addr_or_immed | 0xffff0000;
-           } 
+        /*
+            andi instruction
+            test dump file : I_instruction_2.dump
+            andi $t1, $t2, 100
+         */
+        else if (d->op == 12){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
         }
-        //sw
-        else if(d-> op == 43){
-            if (1 == d->regs.i.addr_or_immed >> 15){
-                d->regs.i.addr_or_immed = d->regs.i.addr_or_immed | 0xffff0000;
-           } 
+        /*
+            ori instruction
+            test dump file : I_instruction_3.dump
+            ori $t1, $t2, 100
+         */
+        else if (d->op == 13){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
         }
-       
+        /*
+            lui instruction
+            test dump file : I_instruction_4.dump
+            lui $t1, 100
+         */
+        else if (d->op == 15){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
+        }
+        /*
+            beq instruction
+            test dump file : I_instruction_5.dump
+            beq $t1, $t2, label
+            label:
+         */
+        else if (d->op == 4){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
+        }
+        /*
+            bne instruction
+            test dump file : I_instruction_5.dump
+            bne $t1, $t2, label
+            label:
+         */
+        else if (d->op == 5){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed); 
+        }
+        /*
+            lw instruction
+            test dump file : I_instruction_7.dump
+            lw $t1, ($t2)
+         */
+        else if (d->op == 35){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);
+        }
+        /*
+            sw instruction
+            test dump file : I_instruction_8.dump
+            sw $t1, ($t2)
+         */
+        else if(d->op == 43){
+           d->regs.i.addr_or_immed = instr << 16;
+           d->regs.i.addr_or_immed = d->regs.i.addr_or_immed >> 16;
+           printf("IMMEDIATE: %d\n", d->regs.i.addr_or_immed);            
+        }
+
+        if(1 == d->regs.i.addr_or_immed >> 15){
+            d->regs.i.addr_or_immed = (0xffff0000) | (d->regs.i.addr_or_immed);
+        }
+        else{
+            d->regs.i.addr_or_immed = (0x0000FFFF & (d->regs.i.addr_or_immed));
+        }
+
         rVals->R_rs = mips.registers[d->regs.i.rs];
         rVals->R_rt = mips.registers[d->regs.i.rt];
-        
         // abort();
     }
 
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -319,9 +420,6 @@ void PrintInstruction ( DecodedInstr* d) {
         else if(d->regs.r.funct == 35){
             printf("subu $%d, $%d, $%d\n", d->regs.r.rd, d->regs.r.rs, d->regs.r.rt);
         }
-        else{
-            exit(0);
-        }
 
         // abort();
         
@@ -342,19 +440,16 @@ void PrintInstruction ( DecodedInstr* d) {
             printf("lui $%d, %d\n", d->regs.i.rt, d->regs.i.addr_or_immed);
         }
         else if(d->op == 4){
-            printf("beq $%d, $%d, 0x%08x\n", d->regs.i.rs, d->regs.i.rt, mips.pc + 4 + (d->regs.i.addr_or_immed << 2));
+            printf("beq $%d, $%d, 0x%08x\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
         }
         else if(d->op == 5){
-            printf("bne $%d, $%d, 0x%8x\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
+            printf("bne $%d, $%d, %d\n", d->regs.i.rs, d->regs.i.rt, d->regs.i.addr_or_immed);
         }
         else if(d->op == 35){
             printf("lw $%d, %d($%d)\n", d->regs.i.rs, d->regs.i.addr_or_immed, d->regs.i.rt);
         }
         else if(d->op == 43){
             printf("sw $%d, %d($%d)\n", d->regs.i.rs, d->regs.i.addr_or_immed, d->regs.i.rt);
-        }
-        else {
-            exit(0);
         }
         // abort();
     }
@@ -367,9 +462,6 @@ void PrintInstruction ( DecodedInstr* d) {
         else if(d->op == 3){
             printf("jal 0x%08x\n", d->regs.j.target);
         }
-        else{
-            exit(0);
-        }
     }
     // abort();
 }
@@ -379,16 +471,18 @@ int Execute ( DecodedInstr* d, RegVals* rVals) {
      int val = 0;
 
      //executing R-format
-     if(d->op == 0){
+     if(d->type == 0){
         //addu
         if(d->regs.r.funct == 33){
             //rd = rs + rt
-            val = rVals->R_rs + rVals->R_rt;
+            rVals->R_rd = rVals->R_rs + rVals->R_rt;
+            val = rVals->R_rd;
         }
         // and
         else if(d->regs.r.funct == 36){
             //rd = rs & rt
-            val = rVals->R_rs & rVals->R_rt;
+            rVals->R_rd = rVals->R_rs & rVals->R_rt;
+            val = rVals->R_rd;
         }
         // jr
         else if(d->regs.r.funct == 8){
@@ -397,32 +491,38 @@ int Execute ( DecodedInstr* d, RegVals* rVals) {
         // or
         else if(d->regs.r.funct == 37){
             //rd = rs | rt
-            val = rVals->R_rs | rVals->R_rt;
+            rVals->R_rd = rVals->R_rs | rVals->R_rt;
+            val = rVals->R_rd;
         }
         // slt
         else if(d->regs.r.funct == 42){
             //rd = 1 if rs < rt else rd = 0
             if(rVals->R_rs < rVals->R_rt){
-                val = 1;
+                rVals->R_rd = 1;
+                val = rVals->R_rd;
             }
             else{
-                val = 0;
+                rVals->R_rd = 0;
+                val = rVals->R_rd;
             }
         }
         // sll
         else if(d->regs.r.funct == 0){
             //rd = rt << shamt
-            val = rVals->R_rt << d->regs.r.shamt;
+            rVals->R_rd = rVals->R_rt << d->regs.r.shamt;
+            val = rVals->R_rd;
         }
         // srl
         else if(d->regs.r.funct == 2){
             //rd = rt >> shamt
-            val = (unsigned int)rVals->R_rt >> d->regs.r.shamt;
+            rVals->R_rd = rVals->R_rt >> d->regs.r.shamt;
+            val = rVals->R_rd;
         }
         // subu
         else if(d->regs.r.funct == 35){
             //rd = rs - rt
-            val = rVals->R_rs - rVals->R_rt;
+            rVals->R_rd = rVals->R_rs - rVals->R_rt;
+            val = rVals->R_rd;
         }
 
         return val;
@@ -435,41 +535,36 @@ int Execute ( DecodedInstr* d, RegVals* rVals) {
         //addiu
         if(d->op == 9){
             //rt = rs + imm
-            val = rVals->R_rs + d->regs.i.addr_or_immed;
+            rVals->R_rt = rVals->R_rs + d->regs.i.addr_or_immed;
+            val = rVals->R_rt;
         }
         //andi
         else if(d->op == 12){
-            val = rVals->R_rs & d->regs.i.addr_or_immed;
+            rVals->R_rt = rVals->R_rs & d->regs.i.addr_or_immed;
+            val = rVals->R_rt;
         }
         //ori
         else if(d->op == 13){
-            val = rVals->R_rs | d->regs.i.addr_or_immed;
+            rVals->R_rt = rVals->R_rs | d->regs.i.addr_or_immed;
+            val = rVals->R_rt;
         }
         //lui
         else if(d->op == 15){
-            val = d->regs.i.addr_or_immed << 16;
+            rVals->R_rt = d->regs.i.addr_or_immed << 16;
+            val = rVals->R_rt;
         }
         //beq
         else if(d->op == 4){
-            if (rVals->R_rs == rVals->R_rt){
-                val = d->regs.i.addr_or_immed << 2;
-            }
-            else{
-                val = 0;
-            }
+            val = rVals->R_rs - rVals->R_rt;
         }
         //bne
         else if(d->op == 5){
-            if (rVals->R_rs != rVals->R_rt){
-                val = d->regs.i.addr_or_immed << 2;
-            }
-            else{
-                val = 0;
-            }
+            val = rVals->R_rs - rVals->R_rt;
         }
         //lw
         else if(d->op == 35){
-            val = rVals->R_rs + d->regs.i.addr_or_immed;
+            rVals->R_rt = rVals->R_rs + d->regs.i.addr_or_immed;
+            val = rVals->R_rt;
         }
         //sw
         else if(d->op == 43){
@@ -481,8 +576,12 @@ int Execute ( DecodedInstr* d, RegVals* rVals) {
 
     //executing j-format
     else{
+        //j
+        if(d->op == 2){
+            val = 0;
+        }
         //jal
-        if(d->op == 3){
+        else if(d->op == 3){
             val = mips.pc += 4;
         }
         return val;
@@ -503,10 +602,10 @@ void UpdatePC ( DecodedInstr* d, int val) {
    //beq
     if(d->op == 4){
         if(val == 0){
-            mips.pc += 0;
+            mips.pc = d -> regs.i.addr_or_immed;
         }
         else{
-            mips.pc += val;
+            mips.pc += 4;
         }
     }
     //bne
@@ -522,18 +621,18 @@ void UpdatePC ( DecodedInstr* d, int val) {
     else if(d->op == 2){
         mips.pc = d -> regs.j.target;
     }
-    // //jal
-    // else if(d->op == 3){
-    //     mips.pc = d -> regs.j.target;
-    // }
+    //jal
+    else if(d->op == 3){
+        mips.pc = d -> regs.j.target;
+    }
     //r format opcode = 0
     else if(d->op == 0){
         //jr
-        if(d->regs.r.funct == 8){
+        if(d->op == 8){
             mips.pc = val;
         }
         else{
-            mips.pc += 0;
+            mips.pc += 4;
         }
 
     }
@@ -551,32 +650,65 @@ void UpdatePC ( DecodedInstr* d, int val) {
  *
  */
 int Mem( DecodedInstr* d, int val, int *changedMem) {
-   /* Your code goes here */
+    /* Your code goes here */
+    int opcode = d->op;
+    //any instruction besides subu and sw don't change memory
+    if (opcode != 35 && opcode != 43){
+        *changedMem = -1;
+        return val;
 
-    *changedMem = -1;
-
-    if (d->type == I){
-        //if sw or lw
-        if (d->op == 35 || d->op == 43){
-            //check if it is still in range
-            if(val < 0x00401000 || val > 0x00404000 || val % 4 != 0) {
-                printf("Memory Access Exception at [0x%08x]: address [%08x].\n", mips.pc, val);
-                exit(0);
-            }
-            //lw
-            else if(d->op == 35){
-                return mips.memory[(val - 0x00400000) / 4];
-            }
-            //sw
-            else{
-                mips.memory[(val - 0x00400000) >> 2] = mips.registers[d->regs.i.rt];
-                *changedMem = val;
-            }
-        }
-        
     }
 
-    return val;
+    else{
+
+        int address = 4198400 + mips.registers[d->regs.i.rs] + d->regs.i.addr_or_immed * 4;
+
+        //not a word formatted
+        if(address % 4 != 0){
+            exit(0);
+        }
+        //outside of memory range 0x00401000 -
+        else if(address < 4198400){
+            exit(0);
+        }
+        //outside of memory range 0x00403fff
+        else if(address > 4210687){
+            exit(0);
+        }
+
+        /**
+         * if the address is still in the memory range of 0x00401000 - 0x00403fff 
+         * then we have to change memory because it is subu and sw
+         */
+        else{
+            int immediate = d->regs.i.addr_or_immed * 4;
+            //subu case
+            if(d->op == 35)
+            {
+                val = mips.memory[1024 + (mips.registers[d->regs.i.rs]) + immediate];
+                *changedMem = -1;
+                return val;
+            }
+            //sw case
+            else if(d->op == 43){
+                /**
+                 * first we find where we want to store the value in our mips memory array 
+                 * by adding 1024 to the rs and the immediate and set that equal to the rt 
+                 * which is the value we want to store
+                 */
+                mips.memory[1024 + (mips.registers[d->regs.i.rs] + immediate)/4] = mips.registers[d->regs.i.rt];
+                *changedMem = 0x00401000 + mips.registers[d->regs.i.rs] + immediate;
+                return 0x00401000 + mips.registers[d->regs.i.rs] + immediate;
+
+            }
+
+            return -1;
+
+        }
+
+        return -1;
+
+    }
    
 
 }
@@ -589,49 +721,4 @@ int Mem( DecodedInstr* d, int val, int *changedMem) {
  */
 void RegWrite( DecodedInstr* d, int val, int *changedReg) {
     /* Your code goes here */
-    *changedReg = -1;    
-
-    //addiu
-    if(d->op == 9){
-        *changedReg = d->regs.i.rt; 
-        mips.registers[d->regs.i.rt] = val;
-    }
-    // r format
-    else if(d->op == 0){
-        //jr
-        if(d->regs.r.funct != 8){
-        *changedReg = d->regs.r.rd; 
-        mips.registers[d->regs.r.rd] = val;
-        }
-    }
-    //andi
-    else if(d->op == 12){
-        *changedReg = d->regs.i.rt; 
-        mips.registers[d->regs.i.rt] = val;
-    }
-    //ori
-    else if(d->op == 13){
-        *changedReg = d->regs.i.rt; 
-        mips.registers[d->regs.i.rt] = val;
-    }
-    //lui
-    else if(d->op == 15){
-        *changedReg = d->regs.i.rt; 
-        mips.registers[d->regs.i.rt] = val;
-    }
-    //lw
-    else if(d->op == 35){
-        *changedReg = d->regs.i.rt;
-        mips.registers[d->regs.i.rt] = val;
-    }
-    //jal
-    else if(d->op == 3){
-        *changedReg = 31; 
-        mips.registers[31] = val;
-    }
-
-
-
-
-
 }
